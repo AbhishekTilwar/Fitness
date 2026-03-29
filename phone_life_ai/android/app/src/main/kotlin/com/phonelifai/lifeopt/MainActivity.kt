@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getSignals" -> result.success(buildSignalsJson())
+                "hasUsageAccess" -> result.success(hasUsageStatsPermission())
                 "openUsageSettings" -> {
                     startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                     result.success(null)
@@ -42,8 +43,7 @@ class MainActivity : FlutterActivity() {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val end = System.currentTimeMillis()
         val start = end - 36L * 60 * 60 * 1000
-        val events = UsageEvents()
-        usm.queryEvents(start, end, events)
+        val events = usm.queryEvents(start, end)
 
         val rows = mutableListOf<EventRow>()
         val e = UsageEvents.Event()

@@ -17,6 +17,8 @@ build/
 .idea/
 
 # Android
+android/.gradle/
+**/android/.gradle/
 local.properties
 **/Generated.xcconfig
 **/Flutter.podspec

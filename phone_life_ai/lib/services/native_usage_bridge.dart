@@ -1,9 +1,20 @@
 import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
 /// Android-only: aggregates UsageEvents + UsageStats for passive signals.
 class NativeUsageBridge {
   static const _channel = MethodChannel('com.phonelifai.lifeopt/usage');
+
+  /// Whether this app can read usage stats (Android). Always false on error.
+  static Future<bool> hasUsageAccess() async {
+    try {
+      final r = await _channel.invokeMethod<bool>('hasUsageAccess');
+      return r ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   static Future<Map<String, dynamic>?> fetchAndroidSignals() async {
     try {
