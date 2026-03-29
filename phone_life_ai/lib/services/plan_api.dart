@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,15 +15,25 @@ class PlanApi {
 
   static const _prefsKey = 'plan_api_base_url';
 
-  /// Dev default via `--dart-define=PLAN_API_BASE=https://...` (no UI exposure).
-  static const String _defaultBase = String.fromEnvironment(
+  /// Optional override: `--dart-define=PLAN_API_BASE=https://...`
+  static const String _baseFromDefine = String.fromEnvironment(
     'PLAN_API_BASE',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: '',
   );
+
+  static const String _productionBase =
+      'https://fitness-qpfe.onrender.com';
+
+  static String _defaultBase() {
+    if (_baseFromDefine.isNotEmpty) return _baseFromDefine;
+    if (kReleaseMode) return _productionBase;
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+    return 'http://127.0.0.1:3000';
+  }
 
   static Future<String> getBaseUrl() async {
     final p = await SharedPreferences.getInstance();
-    return p.getString(_prefsKey) ?? _defaultBase;
+    return p.getString(_prefsKey) ?? _defaultBase();
   }
 
   static Future<void> setBaseUrl(String url) async {
@@ -58,9 +69,15 @@ class PlanApi {
     }
 
     if (res.statusCode != 200) {
-      throw PlanApiException(
-        'Could not load your plan (service returned ${res.statusCode}).',
-      );
+      var detail = 'service returned ${res.statusCode}';
+      try {
+        final errMap = jsonDecode(res.body);
+        if (errMap is Map<String, dynamic>) {
+          final err = errMap['error'] as String?;
+          if (err != null && err.isNotEmpty) detail = err;
+        }
+      } catch (_) {}
+      throw PlanApiException('Could not load your plan ($detail).');
     }
     final map = jsonDecode(res.body) as Map<String, dynamic>;
     final plan = map['plan'] as String?;
