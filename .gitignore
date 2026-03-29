@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+**/.env
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+.idea/
+
+# Android
+local.properties
+**/Generated.xcconfig
+**/Flutter.podspec
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db

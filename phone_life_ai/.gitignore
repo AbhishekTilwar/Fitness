@@ -1,0 +1,12 @@
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+*.ipr
+*.iws
+.idea/
+local.properties
+**/Generated.xcconfig
+**/Flutter.podspec
