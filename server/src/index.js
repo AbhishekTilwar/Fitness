@@ -8,7 +8,24 @@ app.use(express.json({ limit: "64kb" }));
 
 const PORT = Number(process.env.PORT || 3000);
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY?.trim();
+/** Trim and strip one layer of surrounding quotes (common when pasting into host UIs). */
+function readSecretEnv(...names) {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw == null || raw === "") continue;
+    let s = String(raw).trim();
+    if (
+      (s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'"))
+    ) {
+      s = s.slice(1, -1).trim();
+    }
+    if (s) return s;
+  }
+  return undefined;
+}
+
+const GROQ_API_KEY = readSecretEnv("GROQ_API_KEY", "GROQ_KEY");
 const GROQ_MODEL =
   (process.env.GROQ_MODEL || "").trim() || "llama-3.3-70b-versatile";
 const GROQ_BASE = (process.env.GROQ_API_BASE || "https://api.groq.com/openai/v1").replace(
@@ -16,7 +33,7 @@ const GROQ_BASE = (process.env.GROQ_API_BASE || "https://api.groq.com/openai/v1"
   "",
 );
 
-const GROK_API_KEY = process.env.GROK_API_KEY?.trim();
+const GROK_API_KEY = readSecretEnv("GROK_API_KEY", "XAI_API_KEY");
 const GROK_MODEL = (process.env.GROK_MODEL || "").trim() || "grok-2-latest";
 const GROK_BASE = (process.env.GROK_API_BASE || "https://api.x.ai/v1").replace(/\/$/, "");
 
@@ -48,7 +65,11 @@ app.get("/health", (_req, res) => {
     ok: true,
     llm: llm
       ? { provider: llm.provider, model: llm.model }
-      : { configured: false },
+      : {
+          configured: false,
+          hint:
+            "Set GROQ_API_KEY (or GROK_API_KEY) in the service environment — Render: Dashboard → Environment → add variable → Save → redeploy.",
+        },
   });
 });
 
@@ -126,10 +147,17 @@ Rules:
 
 app.listen(PORT, () => {
   const llm = resolveLlm();
+  const groqPresent = Boolean(readSecretEnv("GROQ_API_KEY", "GROQ_KEY"));
+  const grokPresent = Boolean(readSecretEnv("GROK_API_KEY", "XAI_API_KEY"));
   console.log(`Phone Life AI API on http://localhost:${PORT}`);
+  console.log(
+    `Env check: GROQ_API_KEY=${groqPresent ? "present" : "missing"} GROK_API_KEY=${grokPresent ? "present" : "missing"}`,
+  );
   if (llm) {
     console.log(`LLM: ${llm.label} — model "${llm.model}"`);
   } else {
-    console.warn("LLM: not configured (set GROQ_API_KEY or GROK_API_KEY)");
+    console.warn(
+      "LLM: not configured (set GROQ_API_KEY or GROK_API_KEY in the host environment, e.g. Render → Environment)",
+    );
   }
 });
