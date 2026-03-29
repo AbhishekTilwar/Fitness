@@ -30,7 +30,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   bool _usageAccessOk = false;
   PermissionStatus _activityStatus = PermissionStatus.denied;
-  PermissionStatus _sensorsStatus = PermissionStatus.denied;
 
   @override
   void initState() {
@@ -60,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         setState(() {
           _usageAccessOk = true;
           _activityStatus = PermissionStatus.granted;
-          _sensorsStatus = PermissionStatus.granted;
         });
       }
       return;
@@ -68,13 +66,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final usage = await NativeUsageBridge.hasUsageAccess();
     final act = await Permission.activityRecognition.status;
-    final sens = await Permission.sensors.status;
 
     if (mounted) {
       setState(() {
         _usageAccessOk = usage;
         _activityStatus = act;
-        _sensorsStatus = sens;
       });
     }
   }
@@ -87,12 +83,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!Platform.isAndroid) return;
 
     final act = await Permission.activityRecognition.request();
-    final sens = await Permission.sensors.request();
 
     if (mounted) {
       setState(() {
         _activityStatus = act;
-        _sensorsStatus = sens;
       });
     }
   }
@@ -163,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await NativeUsageBridge.openUsageAccessSettings();
   }
 
-  Future<void> _openSensorSettings() async {
+  Future<void> _openAppPermissionSettings() async {
     await HapticFeedback.lightImpact();
     await openAppSettings();
   }
@@ -347,26 +341,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onFix: _openUsageSettings,
               fixLabel: 'Open settings',
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, right: 4, top: 8),
+              child: Text(
+                'If “Phone Life AI” was missing before: fully close and reopen the app after updating, '
+                'then open this setting again — the entry should appear in the list.',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.35,
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             _permissionRow(
               theme,
               icon: Icons.directions_walk_outlined,
               title: 'Physical activity',
-              subtitle: 'Step count and movement context',
+              subtitle: 'Step count (Android asks for this permission)',
               ok: _activityStatus.isGranted,
-              onFix: _activityStatus.isPermanentlyDenied ? _openSensorSettings : _ensureAndroidPermissions,
+              onFix: _activityStatus.isPermanentlyDenied
+                  ? _openAppPermissionSettings
+                  : _ensureAndroidPermissions,
               fixLabel: _activityStatus.isPermanentlyDenied ? 'App settings' : 'Allow',
             ),
             const SizedBox(height: 12),
-            _permissionRow(
-              theme,
-              icon: Icons.vibration_outlined,
-              title: 'Body sensors',
-              subtitle: 'Short motion sample for energy estimate',
-              ok: _sensorsStatus.isGranted,
-              onFix: _sensorsStatus.isPermanentlyDenied ? _openSensorSettings : _ensureAndroidPermissions,
-              fixLabel: _sensorsStatus.isPermanentlyDenied ? 'App settings' : 'Allow',
-            ),
+            _motionInfoRow(theme),
           ],
         ),
       ),
@@ -432,6 +431,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               child: Text(fixLabel),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Accelerometer sampling does not use [Permission.sensors] (BODY_SENSORS); that
+  /// permission is for heart-rate class sensors. We show an informational row only.
+  Widget _motionInfoRow(ThemeData theme) {
+    final cs = theme.colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.motion_photos_on_outlined, size: 22, color: cs.secondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Motion (energy estimate)',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'We take a very short accelerometer sample on-device. That does not use the '
+                  '“Body sensors” permission — no extra prompt on most devices.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.check_circle_outline, color: cs.secondary, size: 22),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -24,11 +25,35 @@ class MainActivity : FlutterActivity() {
                 "getSignals" -> result.success(buildSignalsJson())
                 "hasUsageAccess" -> result.success(hasUsageStatsPermission())
                 "openUsageSettings" -> {
-                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    openUsageAccessSettingsForThisApp()
                     result.success(null)
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    /**
+     * Opens the screen where the user can grant usage access. Prefer a package-targeted
+     * intent so "Phone Life AI" is highlighted when the OEM supports it.
+     */
+    private fun openUsageAccessSettingsForThisApp() {
+        val generic = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val targeted = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            try {
+                startActivity(targeted)
+                return
+            } catch (_: Exception) {
+                // Fall back below.
+            }
+        }
+        try {
+            startActivity(generic)
+        } catch (_: Exception) {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
         }
     }
 
